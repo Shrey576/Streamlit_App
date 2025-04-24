@@ -3,7 +3,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import BayesianRidge
@@ -37,24 +36,29 @@ class BayesianProgram:
             return -np.sqrt(mean_squared_error(self.y, m.predict(self.X)))
 
         pbounds = {'lambda_1': (1e-6, 1e-1), 'lambda_2': (1e-6, 1e-1)}
-        optimizer = BayesianOptimization(f=black_box, pbounds=pbounds, verbose=0, random_state=1)
+        optimizer = BayesianOptimization(
+            f=black_box, pbounds=pbounds, verbose=0, random_state=1
+        )
         optimizer.maximize(init_points=3, n_iter=5)
         best = optimizer.max['params']
         self.model = BayesianRidge(**best).fit(self.X, self.y)
 
     def forecast_score(self, n_samples=1000):
-        means, stds = self.model.predict(self.X, return_std=True)
-        loc   = means[np.newaxis, :]
-        scale = stds[np.newaxis, :]
-        draws = np.random.normal(loc=loc, scale=scale, size=(n_samples, len(means)))
-        row_means = draws.mean(axis=0)
-        return row_means.mean()
+        means, stds = self.model.predict(self.X, return_std=True)      # shape (n_rows,)
+        loc   = means[np.newaxis, :]                                   # (1, n_rows)
+        scale = stds[np.newaxis, :]                                    # (1, n_rows)
+        draws = np.random.normal(loc=loc, scale=scale, size=(n_samples, means.size))
+        row_means = draws.mean(axis=0)                                 # (n_rows,)
+        raw_score = row_means.mean()                                   # scalar
+        # Assuming raw_score is a percentage (0–100), scale to 0–10:
+        seo_score_10 = float(np.clip(raw_score / 10.0, 0, 10))
+        return seo_score_10
 
 # === Streamlit UI ===
 def main():
     st.title("🔮 Bayesian SEO Score Predictor")
 
-    st.write("Automatically uses predefined features and target to compute a single SEO score.")
+    st.write("This tool uses a Bayesian model to compute a single SEO score (0–10).")
 
     uploaded = st.file_uploader("Upload your SEO CSV", type=['csv'])
     if not uploaded:
@@ -64,7 +68,7 @@ def main():
     st.subheader("Data Preview")
     st.dataframe(df.head())
 
-    # >>> DEFINE YOUR FEATURE SET HERE <<<
+    # >>> Fix your feature & target columns here <<<
     FEATURES = [
         'CTR (%)',
         'Keywords_Ranking',
@@ -74,19 +78,21 @@ def main():
     ]
     TARGET = 'Conversion_Rate (%)'
 
-    # Run the pipeline
+    # Preprocess
     checker = DataConsistencyChecker(df)
     X, y = checker.preprocess(FEATURES, TARGET)
 
+    # Train & tune
     prog = BayesianProgram(X, y)
-    with st.spinner("Tuning & training Bayesian model..."):
+    with st.spinner("🔄 Tuning & training Bayesian model..."):
         prog.tune_hyperparameters()
 
-    with st.spinner("Sampling posterior and computing SEO score..."):
+    # Forecast score
+    with st.spinner("🔮 Sampling posterior and computing SEO score..."):
         seo_score = prog.forecast_score(n_samples=2000)
 
     st.success("✅ Computation complete!")
-    st.metric("Your Predicted SEO Score", f"{seo_score:.2f}")
+    st.metric("Your Predicted SEO Score (0–10)", f"{seo_score:.2f}")
 
 if __name__ == "__main__":
     main()
