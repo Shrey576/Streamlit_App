@@ -27,8 +27,7 @@ class DataConsistencyChecker:
 # === 2. HiddenStateIdentifier (GMM) ===
 class HiddenStateIdentifier:
     def __init__(self, n_components=5):
--       self.model = BayesianGaussianMixture(
-+       self.model = BayesianGaussianMixture(
+        self.model = BayesianGaussianMixture(
             n_components=n_components,
             covariance_type='full',
             random_state=42
