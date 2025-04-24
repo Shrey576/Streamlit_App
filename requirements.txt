@@ -1,7 +1,8 @@
 streamlit
+pandas
 numpy
-pandas
-seaborn
-sci-kit-learn
-matlplotlib
-pandas
+matplotlib
+scikit-learn
+pomegranate
+bayesian-optimization
+
