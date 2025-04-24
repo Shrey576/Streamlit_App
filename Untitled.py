@@ -1,141 +1,82 @@
-#!/usr/bin/env python
-# coding: utf-8
+# seo_score_app.py
 
-# In[ ]:
-
-
+import streamlit as st
 import pandas as pd
+import plotly.graph_objects as go
 
-# Raw string for file path (useful on Windows)
-df = pd.read_csv(r'C:\Users\hp022399\Downloads\FYP\UrbanScape_Complete_SEO_Dataset__2020-2024_.csv')
-
-
-# In[ ]:
-
-
-class BayesianProgram:
+# Dummy PredictionManager for illustration
+class PredictionManager:
     def __init__(self, data):
         self.data = data
-        self.model = None
+        self.result = None
 
-    def train_model(self):
-        # Train the Bayesian model using input data
-        pass
+    def run_prediction(self):
+        # Simulate an SEO score (in real use, you'd replace this with a model)
+        self.result = 76.5  # e.g., return from your Bayesian model
 
-    def make_prediction(self, X_test):
-        # Make predictions based on the trained model
-        pass
+    def get_results(self):
+        return self.result
 
-    def calculate_posterior(self):
-        # Calculate posterior probabilities using Bayesian Inference
-        pass
-
-
-# In[ ]:
-
-
-class SEOForecast(BayesianProgram):  # Inheriting from BayesianProgram
-    def __init__(self, data, forecast_period):
-        super().__init__(data)
-        self.forecast_period = forecast_period
-
-    def forecast(self):
-        # Use Bayesian model for SEO prediction over a forecast period
-        pass
-
-
-# In[ ]:
-
-
-class DataConsistencyChecker:
-    def __init__(self, data):
-        self.data = data
-
-    def check_missing_values(self):
-        # Check for missing values and handle them
-        pass
-
-    def check_outliers(self):
-        # Check for outliers
-        pass
-
-    def validate_data(self):
-        # Validate that data conforms to the expected format
-        pass
-
-
-# In[ ]:
-
-
-class GaussianProcess:
-    def __init__(self, data):
-        self.data = data
-
-    def fit(self):
-        # Fit Gaussian process to the data
-        pass
-
-    def predict(self, X):
-        # Make predictions based on Gaussian processes
-        pass
-
-
-# In[ ]:
-
-
-'''import streamlit as st
-
+# Dummy UserInputForm for illustration
 class UserInputForm:
     def __init__(self):
         self.data = None
 
     def upload_file(self):
-        # Streamlit code for file upload
-        file = st.file_uploader("Upload your CSV data", type=["csv"])
+        file = st.file_uploader("Upload your SEO dataset (.csv)", type=["csv"])
         if file is not None:
             self.data = pd.read_csv(file)
-            st.write(self.data.head())  # Show preview of uploaded data
+            st.write("📄 Preview of uploaded data:")
+            st.write(self.data.head())
 
     def get_data(self):
-        return self.data '''
+        return self.data
 
+# Gauge meter visualization
+def display_seo_meter(score):
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=score,
+        title={'text': "SEO Health Score"},
+        gauge={
+            'axis': {'range': [0, 100]},
+            'bar': {'color': "darkblue"},
+            'steps': [
+                {'range': [0, 40], 'color': "#f44336"},     # Poor
+                {'range': [40, 60], 'color': "#ff9800"},    # Fair
+                {'range': [60, 80], 'color': "#ffeb3b"},    # Good
+                {'range': [80, 100], 'color': "#4caf50"}    # Excellent
+            ],
+            'threshold': {
+                'line': {'color': "black", 'width': 4},
+                'thickness': 0.75,
+                'value': score
+            }
+        }
+    ))
 
-# In[ ]:
+    st.plotly_chart(fig)
 
-
-
-
-
-# In[ ]:
-
-
-# Display the first few rows
-df.head()
-import streamlit as st
-import pandas as pd
-from PredictionManager import PredictionManager
-from UserInputForm import UserInputForm
-
+# Main Streamlit app
 def main():
-    st.title("SEO Prediction Tool")
-    
-    # Step 1: User Upload Form
+    st.set_page_config(page_title="SEO Score Predictor", layout="centered")
+    st.title("📈 SEO Prediction & Scoring Tool")
+    st.markdown("Upload your SEO data and get a health score visualized.")
+
     user_input_form = UserInputForm()
     user_input_form.upload_file()
 
-    # Step 2: Run Prediction on uploaded data
     if user_input_form.data is not None:
         data = user_input_form.get_data()
-        
-        # Initialize the prediction manager
-        prediction_manager = PredictionManager(data)
 
-        # Run the prediction
+        # Step 2: Run your prediction logic
+        prediction_manager = PredictionManager(data)
         prediction_manager.run_prediction()
 
-        st.write("Prediction results:")
-        st.write(prediction_manager.get_results())  # Show results to the user
+        # Step 3: Output prediction
+        score = prediction_manager.get_results()
+        st.success(f"✅ Predicted SEO Score: {score}")
+        display_seo_meter(score)
 
 if __name__ == "__main__":
     main()
-
