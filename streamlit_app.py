@@ -10,7 +10,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import BayesianRidge
 from sklearn.metrics import mean_squared_error
 from bayes_opt import BayesianOptimization
-from pomegranate import BayesianGaussianMixture
+from sklearn.mixture import BayesianGaussianMixture
 
 # === 1. DataConsistencyChecker ===
 class DataConsistencyChecker:
