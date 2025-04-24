@@ -34,33 +34,40 @@ class HiddenStateIdentifier:
         )
 
     def fit_predict(self, X):
-        return self.model.fit_predict(StandardScaler().fit_transform(X))
+        X_scaled = StandardScaler().fit_transform(X)
+        return self.model.fit_predict(X_scaled)
 
 # === 3-6. BayesianProgram ===
 class BayesianProgram:
     def __init__(self, X, y):
-        self.X_raw, self.y = X, y
+        self.X_raw = X
+        self.y = y
         self.scaler = StandardScaler()
         self.X = self.scaler.fit_transform(self.X_raw)
         self.model = None
         self.best_params = {}
 
     def tune_hyperparameters(self, init_points=3, n_iter=5):
-        # Define black-box for Bayesian Ridge
-        def black_box(alpha, lambda_1, lambda_2):
-            m = BayesianRidge(alpha=alpha, lambda_1=lambda_1, lambda_2=lambda_2)
+        # Define black-box for Bayesian Ridge (only valid kwargs)
+        def black_box(lambda_1, lambda_2):
+            m = BayesianRidge(lambda_1=lambda_1, lambda_2=lambda_2)
             m.fit(self.X, self.y)
             y_pred = m.predict(self.X)
             return -np.sqrt(mean_squared_error(self.y, y_pred))
 
-       pbounds = {
-    'lambda_1': (1e-6, 1e-1),
-    'lambda_2': (1e-6, 1e-1)
-}
-     optimizer = BayesianOptimization(f=black_box, pbounds=pbounds, random_state=1)
-optimizer.maximize(init_points=3, n_iter=5)
-self.best_params = optimizer.max['params']
+        pbounds = {
+            'lambda_1': (1e-6, 1e-1),
+            'lambda_2': (1e-6, 1e-1)
+        }
 
+        optimizer = BayesianOptimization(
+            f=black_box,
+            pbounds=pbounds,
+            random_state=1,
+            verbose=0
+        )
+        optimizer.maximize(init_points=init_points, n_iter=n_iter)
+        self.best_params = optimizer.max['params']
         return self.best_params
 
     def train_model(self):
@@ -74,9 +81,10 @@ self.best_params = optimizer.max['params']
     def posterior_samples(self, X_new, n_samples=1000):
         Xs = self.scaler.transform(X_new)
         means, stds = self.model.predict(Xs, return_std=True)
-        # Monte Carlo draws
         draws = np.random.normal(
-            loc=means[:, None], scale=stds[:, None], size=(n_samples, len(means))
+            loc=means[:, None],
+            scale=stds[:, None],
+            size=(n_samples, len(means))
         )
         return draws
 
@@ -84,6 +92,7 @@ self.best_params = optimizer.max['params']
 class ShapleyValueAnalyzer:
     def __init__(self, model, X):
         self.explainer = shap.Explainer(model, X)
+
     def shap_values(self, X):
         return self.explainer(X)
 
@@ -94,7 +103,6 @@ class SEOForecast(BayesianProgram):
         self.forecast_period = forecast_period
 
     def forecast(self, n_samples=500):
-        # posterior over training X, but you could pass future feature set
         draws = self.posterior_samples(self.X_raw, n_samples=n_samples)
         row_means = draws.mean(axis=0)
         overall = row_means.mean()
@@ -108,7 +116,8 @@ class SEOForecast(BayesianProgram):
 class PredictionManager:
     def __init__(self, df, features, target):
         self.df = df
-        self.features, self.target = features, target
+        self.features = features
+        self.target = target
         self.results = {}
 
     def run_all(self):
@@ -170,7 +179,8 @@ def main():
     scatter = ax1.scatter(
         df[features[1]], df[features[0]], c=res['clusters'], cmap='tab10', alpha=0.7
     )
-    ax1.set_xlabel(features[1]); ax1.set_ylabel(features[0])
+    ax1.set_xlabel(features[1])
+    ax1.set_ylabel(features[0])
     ax1.set_title("Fig 1: Clusters of SEO Behavior")
     st.pyplot(fig1)
 
@@ -181,23 +191,25 @@ def main():
     y_pred = res['row_means']
     ax2.errorbar(y_true, y_pred, fmt='o', alpha=0.6)
     ax2.plot([y_true.min(), y_true.max()], [y_true.min(), y_true.max()], 'k--')
-    ax2.set_xlabel("Actual"); ax2.set_ylabel("Predicted")
+    ax2.set_xlabel("Actual")
+    ax2.set_ylabel("Predicted")
     ax2.set_title("Fig 2: Predicted vs Actual SEO Score")
     st.pyplot(fig2)
 
     # 9.3 Posterior histogram & overall score
     st.subheader("Posterior Distribution & Aggregated SEO Score")
     fig3, ax3 = plt.subplots()
-    ax3.hist(res['overall_score'] * np.ones(1), bins=1)  # overall
     ax3.hist(res['row_means'], bins=30, alpha=0.7, label='Per-row means')
     ax3.set_title("Posterior & Per-row SEO Scores")
-    ax3.set_xlabel("SEO Score"); ax3.set_ylabel("Frequency")
+    ax3.set_xlabel("SEO Score")
+    ax3.set_ylabel("Frequency")
     st.pyplot(fig3)
     st.metric("Overall aggregated SEO Score", f"{res['overall_score']:.2f}")
 
     # 9.4 Feature importance via Shapley
     st.subheader("Feature Contributions (SHAP values)")
-    st.pyplot(shap.plots.bar(res['shap_vals'], max_display=len(features)))
+    shap.plots.bar(res['shap_vals'], max_display=len(features))
+    st.pyplot(plt.gcf())
 
 if __name__ == "__main__":
     main()
