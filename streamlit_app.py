@@ -53,14 +53,14 @@ class BayesianProgram:
             y_pred = m.predict(self.X)
             return -np.sqrt(mean_squared_error(self.y, y_pred))
 
-        pbounds = {
-            'alpha': (1e-6, 1e-1),
-            'lambda_1': (1e-6, 1e-1),
-            'lambda_2': (1e-6, 1e-1)
-        }
-        optimizer = BayesianOptimization(f=black_box, pbounds=pbounds, random_state=1)
-        optimizer.maximize(init_points=init_points, n_iter=n_iter)
-        self.best_params = optimizer.max['params']
+       pbounds = {
+    'lambda_1': (1e-6, 1e-1),
+    'lambda_2': (1e-6, 1e-1)
+}
+     optimizer = BayesianOptimization(f=black_box, pbounds=pbounds, random_state=1)
+optimizer.maximize(init_points=3, n_iter=5)
+self.best_params = optimizer.max['params']
+
         return self.best_params
 
     def train_model(self):
