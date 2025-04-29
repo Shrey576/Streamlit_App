@@ -97,23 +97,31 @@ def simulate_optimization(data):
 # Shows predicted CTR % as a final actionable metric
 
 def display_seo_meter(pre_score, post_score):
-    fig = go.Figure()
+    categories = ['Poor', 'Fair', 'Good', 'Excellent']
+    ranges = [(0, 40), (40, 60), (60, 80), (80, 100)]
 
-    fig.add_trace(go.Indicator(
-        mode="gauge+number",
-        value=pre_score,
-        title={"text": "Pre-Optimization SEO CTR (%)"},
-        gauge={'axis': {'range': [0, 100]},
-               'bar': {'color': "red"}}
-    ))
+    def get_category(score):
+        for i, (low, high) in enumerate(ranges):
+            if low <= score < high:
+                return categories[i]
+        return categories[-1]
 
-    fig.add_trace(go.Indicator(
-        mode="gauge+number",
-        value=post_score,
-        title={"text": "Post-Optimization SEO CTR (%)"},
-        gauge={'axis': {'range': [0, 100]},
-               'bar': {'color': "green"}}
-    ))
+    st.markdown("## 🔍 SEO Score Classification")
+    st.markdown(f"**Pre-Optimization Score:** `{pre_score}` → `{get_category(pre_score)}`")
+    st.markdown(f"**Post-Optimization Score:** `{post_score}` → `{get_category(post_score)}`")
+
+    # Simple bar chart to visualize side-by-side
+    fig = go.Figure(data=[
+        go.Bar(name='Pre-Optimization', x=['CTR (%)'], y=[pre_score], marker_color='indianred'),
+        go.Bar(name='Post-Optimization', x=['CTR (%)'], y=[post_score], marker_color='seagreen')
+    ])
+
+    fig.update_layout(
+        barmode='group',
+        title="CTR Comparison: Before vs After Optimization",
+        yaxis=dict(title='CTR (%)', range=[0, 100]),
+        xaxis=dict(title='')
+    )
 
     st.plotly_chart(fig)
 
@@ -166,6 +174,3 @@ def main():
             'Exit_Rate',
             'Average_Page_Load_Time'
         ], show=False))
-
-if __name__ == "__main__":
-    main()
