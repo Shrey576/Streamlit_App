@@ -1,23 +1,52 @@
-# seo_score_app.py
-
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+from sklearn.linear_model import Ridge
+from sklearn.preprocessing import MinMaxScaler
 
-# Dummy PredictionManager for illustration
+# Updated PredictionManager using Ridge Regression
 class PredictionManager:
     def __init__(self, data):
         self.data = data
         self.result = None
 
     def run_prediction(self):
-        # Simulate an SEO score (in real use, you'd replace this with a model)
-        self.result = 76.5  # e.g., return from your Bayesian model
+        # Select relevant features
+        features = [
+            'Backlinks',
+            'Organic_Traffic_Growth_Rate',
+            'Keywords_Ranking',
+            'CTR (%)',
+            'Exit_Rate',
+            'Average_Page_Load_Time'
+        ]
+
+        # Filter only those columns
+        df = self.data[features].dropna()
+
+        # Normalize data
+        scaler = MinMaxScaler()
+        X = scaler.fit_transform(df)
+
+        # Generate dummy target values for Ridge regression
+        # For illustration, create a synthetic target
+        # In a real app, you'd train on known historical SEO scores
+        y = X.mean(axis=1)
+
+        # Fit the Ridge Regression model
+        model = Ridge(alpha=1.0)
+        model.fit(X, y)
+
+        # Predict on the same input for demo (or could be test split)
+        predictions = model.predict(X)
+
+        # Take the most recent row as current SEO score
+        self.result = round(predictions[-1] * 100, 2)  # Scale to 0-100
 
     def get_results(self):
         return self.result
 
-# Dummy UserInputForm for illustration
+# User upload form
 class UserInputForm:
     def __init__(self):
         self.data = None
@@ -32,7 +61,7 @@ class UserInputForm:
     def get_data(self):
         return self.data
 
-# Gauge meter visualization
+# Display gauge chart
 def display_seo_meter(score):
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
@@ -57,7 +86,7 @@ def display_seo_meter(score):
 
     st.plotly_chart(fig)
 
-# Main Streamlit app
+# Main Streamlit app logic
 def main():
     st.set_page_config(page_title="SEO Score Predictor", layout="centered")
     st.title("📈 SEO Prediction & Scoring Tool")
@@ -69,14 +98,9 @@ def main():
     if user_input_form.data is not None:
         data = user_input_form.get_data()
 
-        # Step 2: Run your prediction logic
+        # Run prediction
         prediction_manager = PredictionManager(data)
         prediction_manager.run_prediction()
 
-        # Step 3: Output prediction
-        score = prediction_manager.get_results()
-        st.success(f"✅ Predicted SEO Score: {score}")
-        display_seo_meter(score)
-
-if __name__ == "__main__":
-    main()
+        # Show results
+        score = prediction
