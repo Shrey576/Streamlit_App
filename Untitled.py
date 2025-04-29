@@ -1,52 +1,43 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import plotly.graph_objects as go
-from sklearn.linear_model import Ridge
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.linear_model import BayesianRidge
 
-# Updated PredictionManager using Ridge Regression
+# --- Prediction Manager with Bayesian Ridge ---
 class PredictionManager:
     def __init__(self, data):
         self.data = data
-        self.result = None
+        self.model = BayesianRidge()
+        self.scaler = MinMaxScaler()
+        self.X = None
+        self.y = None
 
-    def run_prediction(self):
-        # Select relevant features
+    def prepare_data(self):
         features = [
             'Backlinks',
             'Organic_Traffic_Growth_Rate',
             'Keywords_Ranking',
-            'CTR (%)',
             'Exit_Rate',
             'Average_Page_Load_Time'
         ]
+        df = self.data.dropna()
+        self.X = self.scaler.fit_transform(df[features])
+        self.y = df['CTR (%)']
 
-        # Filter only those columns
-        df = self.data[features].dropna()
+    def train_model(self):
+        self.model.fit(self.X, self.y)
 
-        # Normalize data
-        scaler = MinMaxScaler()
-        X = scaler.fit_transform(df)
+    def predict_ctr(self, new_data=None):
+        if new_data is not None:
+            new_scaled = self.scaler.transform(new_data)
+            pred_mean, pred_std = self.model.predict(new_scaled, return_std=True)
+        else:
+            pred_mean, pred_std = self.model.predict(self.X, return_std=True)
+        return pred_mean, pred_std
 
-        # Generate dummy target values for Ridge regression
-        # For illustration, create a synthetic target
-        # In a real app, you'd train on known historical SEO scores
-        y = X.mean(axis=1)
-
-        # Fit the Ridge Regression model
-        model = Ridge(alpha=1.0)
-        model.fit(X, y)
-
-        # Predict on the same input for demo (or could be test split)
-        predictions = model.predict(X)
-
-        # Take the most recent row as current SEO score
-        self.result = round(predictions[-1] * 100, 2)  # Scale to 0-100
-
-    def get_results(self):
-        return self.result
-
-# User upload form
+# --- User Input Form ---
 class UserInputForm:
     def __init__(self):
         self.data = None
@@ -61,46 +52,83 @@ class UserInputForm:
     def get_data(self):
         return self.data
 
-# Display gauge chart
-def display_seo_meter(score):
-    fig = go.Figure(go.Indicator(
+# --- SEO Optimization Simulator ---
+def simulate_optimization(data):
+    data_sim = data.copy()
+    st.subheader("🔧 Simulate SEO Optimization")
+
+    backlinks_boost = st.slider("Increase Backlinks (%)", 0, 100, 20)
+    exit_rate_reduction = st.slider("Decrease Exit Rate (%)", 0, 50, 10)
+    load_time_reduction = st.slider("Decrease Load Time (%)", 0, 50, 15)
+
+    data_sim['Backlinks'] *= (1 + backlinks_boost/100)
+    data_sim['Exit_Rate'] *= (1 - exit_rate_reduction/100)
+    data_sim['Average_Page_Load_Time'] *= (1 - load_time_reduction/100)
+
+    return data_sim
+
+# --- SEO Meter Display ---
+def display_seo_meter(pre_score, post_score):
+    fig = go.Figure()
+
+    fig.add_trace(go.Indicator(
         mode="gauge+number",
-        value=score,
-        title={'text': "SEO Health Score"},
-        gauge={
-            'axis': {'range': [0, 100]},
-            'bar': {'color': "darkblue"},
-            'steps': [
-                {'range': [0, 40], 'color': "#f44336"},     # Poor
-                {'range': [40, 60], 'color': "#ff9800"},    # Fair
-                {'range': [60, 80], 'color': "#ffeb3b"},    # Good
-                {'range': [80, 100], 'color': "#4caf50"}    # Excellent
-            ],
-            'threshold': {
-                'line': {'color': "black", 'width': 4},
-                'thickness': 0.75,
-                'value': score
-            }
-        }
+        value=pre_score,
+        title={"text": "Pre-Optimization SEO CTR (%)"},
+        gauge={'axis': {'range': [0, 100]},
+               'bar': {'color': "red"}}
+    ))
+
+    fig.add_trace(go.Indicator(
+        mode="gauge+number",
+        value=post_score,
+        title={"text": "Post-Optimization SEO CTR (%)"},
+        gauge={'axis': {'range': [0, 100]},
+               'bar': {'color': "green"}}
     ))
 
     st.plotly_chart(fig)
 
-# Main Streamlit app logic
+# --- Main Streamlit App ---
 def main():
-    st.set_page_config(page_title="SEO Score Predictor", layout="centered")
-    st.title("📈 SEO Prediction & Scoring Tool")
-    st.markdown("Upload your SEO data and get a health score visualized.")
+    st.set_page_config(page_title="SEO Bayesian CTR Predictor", layout="centered")
+    st.title("🔍 SEO Bayesian Prediction Tool")
+    st.markdown("Upload your SEO dataset, predict CTR, and simulate SEO improvements!")
 
-    user_input_form = UserInputForm()
-    user_input_form.upload_file()
+    user_input = UserInputForm()
+    user_input.upload_file()
 
-    if user_input_form.data is not None:
-        data = user_input_form.get_data()
+    if user_input.data is not None:
+        data = user_input.get_data()
 
-        # Run prediction
-        prediction_manager = PredictionManager(data)
-        prediction_manager.run_prediction()
+        pm = PredictionManager(data)
+        pm.prepare_data()
+        pm.train_model()
 
-        # Show results
-        score = prediction
+        # Pre-Optimization Prediction
+        pre_mean, pre_std = pm.predict_ctr()
+        pre_score = round(pre_mean[-1], 2)
+
+        # Simulate Optimization
+        optimized_data = simulate_optimization(data)
+
+        # Post-Optimization Prediction
+        optimized_features = optimized_data[[
+            'Backlinks',
+            'Organic_Traffic_Growth_Rate',
+            'Keywords_Ranking',
+            'Exit_Rate',
+            'Average_Page_Load_Time'
+        ]]
+        post_mean, post_std = pm.predict_ctr(new_data=optimized_features)
+        post_score = round(post_mean[-1], 2)
+
+        # Display Results
+        st.subheader("📈 Prediction Results")
+        st.write(f"**Pre-Optimization CTR Prediction:** {pre_score}%")
+        st.write(f"**Post-Optimization CTR Prediction:** {post_score}%")
+
+        display_seo_meter(pre_score, post_score)
+
+if __name__ == "__main__":
+    main()
