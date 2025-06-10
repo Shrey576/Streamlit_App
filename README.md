@@ -20,7 +20,8 @@ cd your-repo-name
 ### 2. Install Dependencies  
 Ensure you have Python **3.8+** installed, then run:  
 ```bash  
-pip install -r requirements.txt  
+pip install -r requirements.txt
+NB: Please also install the plotly library/use a machine that has plotly installed to avoid dependency issues 
 ```  
 ### 3. Run the Application  
 Launch the Streamlit app with:  
