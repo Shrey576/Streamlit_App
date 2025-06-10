@@ -1,98 +1,153 @@
-# streamlit_app.py
-
 import streamlit as st
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+import plotly.graph_objects as go
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.linear_model import BayesianRidge, LinearRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
+from sklearn.cluster import KMeans
+from scipy.optimize import minimize
 
-from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import BayesianRidge
-from sklearn.metrics import mean_squared_error
-from bayes_opt import BayesianOptimization
+# --- Core Modular Classes ---
 
-# === 1. DataConsistencyChecker ===
-class DataConsistencyChecker:
-    def __init__(self, df):
-        self.df = df
+class CTRForecaster:
+    def __init__(self, model, X_base):
+        self.model = model
+        self.X_base = X_base
 
-    def preprocess(self, features, target):
-        df = self.df.dropna(subset=features + [target])
-        X = df[features].select_dtypes(include='number')
-        y = df[target].astype(float)
-        return X, y
+    def forecast_gaussian(self):
+        X_future = np.array([self.X_base * (1 + 0.05 * i) for i in range(5)])
+        mean, std = self.model.predict(X_future, return_std=True)
+        samples = np.random.normal(loc=mean, scale=std, size=(1000, len(mean)))
+        return samples, mean, std
 
-# === 2. BayesianProgram ===
-class BayesianProgram:
-    def __init__(self, X, y):
-        self.X_raw = X
-        self.y = y
-        self.scaler = StandardScaler()
-        self.X = self.scaler.fit_transform(self.X_raw)
-        self.model = None
 
-    def tune_hyperparameters(self):
-        def black_box(lambda_1, lambda_2):
-            m = BayesianRidge(lambda_1=lambda_1, lambda_2=lambda_2)
-            m.fit(self.X, self.y)
-            return -np.sqrt(mean_squared_error(self.y, m.predict(self.X)))
+class ClusteringEngine:
+    def __init__(self, samples):
+        self.samples = samples
 
-        pbounds = {'lambda_1': (1e-6, 1e-1), 'lambda_2': (1e-6, 1e-1)}
-        optimizer = BayesianOptimization(
-            f=black_box, pbounds=pbounds, verbose=0, random_state=1
-        )
-        optimizer.maximize(init_points=3, n_iter=5)
-        best = optimizer.max['params']
-        self.model = BayesianRidge(**best).fit(self.X, self.y)
+    def apply_kmeans(self, n_clusters=3):
+        mean_forecasts = self.samples.mean(axis=0)
+        km = KMeans(n_clusters=n_clusters, random_state=42)
+        km.fit(self.samples)
+        centroids = km.cluster_centers_.mean(axis=1)
+        optimal_ctr = max(centroids)
+        return optimal_ctr, centroids
 
-    def forecast_score(self, n_samples=1000):
-        means, stds = self.model.predict(self.X, return_std=True)      # shape (n_rows,)
-        loc   = means[np.newaxis, :]                                   # (1, n_rows)
-        scale = stds[np.newaxis, :]                                    # (1, n_rows)
-        draws = np.random.normal(loc=loc, scale=scale, size=(n_samples, means.size))
-        row_means = draws.mean(axis=0)                                 # (n_rows,)
-        raw_score = row_means.mean()                                   # scalar
-        # Assuming raw_score is a percentage (0–100), scale to 0–10:
-        seo_score_10 = float(np.clip(raw_score / 10.0, 0, 10))
-        return seo_score_10
 
-# === Streamlit UI ===
+class ScoreEvaluator:
+    @staticmethod
+    def compute_deviation(optimal, actual):
+        return (optimal - actual) / actual
+
+    @staticmethod
+    def compute_seo_score(deviation):
+        return 1 / (1 + np.exp(deviation))
+
+
+class PredictionManager:
+    def __init__(self, data):
+        self.data = data.dropna()
+        self.features = [
+            'Backlinks',
+            'Organic_Traffic_Growth_Rate (%)',
+            'Keywords_Ranking',
+            'Exit_Rate (%)',
+            'Page_Load_Time (sec)'
+        ]
+        self.target = 'CTR (%)'
+        self.scaler = MinMaxScaler()
+        self.X = self.scaler.fit_transform(self.data[self.features])
+        self.y = self.data[self.target]
+        self.model = BayesianRidge()
+        self.lr = LinearRegression()
+
+    def train_models(self):
+        X_train, X_test, y_train, y_test = train_test_split(
+            self.X, self.y, test_size=0.2, random_state=42)
+        self.model.fit(X_train, y_train)
+        self.lr.fit(X_train, y_train)
+        y_pred = self.model.predict(X_test)
+        y_lr_pred = self.lr.predict(X_test)
+
+        mse = mean_squared_error(y_test, y_pred)
+        rmse = np.sqrt(mse)
+        mae = mean_absolute_error(y_test, y_pred)
+        r2 = r2_score(y_test, y_pred)
+
+        # Baseline SEO score from linear regression
+        baseline_score = np.mean(y_lr_pred)
+
+        return {
+            "MSE": mse,
+            "RMSE": rmse,
+            "MAE": mae,
+            "R2": r2,
+            "Baseline SEO Score": baseline_score
+        }
+
+    def run_pipeline(self):
+        X_base = self.X.mean(axis=0)
+        forecaster = CTRForecaster(self.model, X_base)
+        samples, mean_forecast, std_forecast = forecaster.forecast_gaussian()
+
+        clustering = ClusteringEngine(samples)
+        optimal_ctr, centroids = clustering.apply_kmeans()
+
+        actual_ctr = self.y.mean()
+        deviation = ScoreEvaluator.compute_deviation(optimal_ctr, actual_ctr)
+        seo_score = ScoreEvaluator.compute_seo_score(deviation)
+
+        return {
+            "forecast_samples": samples,
+            "mean_forecast": mean_forecast,
+            "std_forecast": std_forecast,
+            "optimal_ctr": optimal_ctr,
+            "actual_ctr": actual_ctr,
+            "deviation": deviation,
+            "seo_score": seo_score,
+            "centroids": centroids
+        }
+
+# --- Streamlit UI ---
 def main():
-    st.title("🔮 Bayesian SEO Score Predictor")
+    st.set_page_config(page_title="CTR Forecasting Tool", layout="centered")
+    st.title("CTR Forecasting and SEO Scoring Tool")
 
-    st.write("This tool uses a Bayesian model to compute a single SEO score (0–10).")
+    uploaded_file = st.file_uploader("Upload your SEO dataset (.csv)", type=["csv"])
+    if uploaded_file:
+        data = pd.read_csv(uploaded_file)
+        st.write("Preview of Uploaded Data")
+        st.dataframe(data.head())
 
-    uploaded = st.file_uploader("Upload your SEO CSV", type=['csv'])
-    if not uploaded:
-        return
+        manager = PredictionManager(data)
+        metrics = manager.train_models()
+        results = manager.run_pipeline()
 
-    df = pd.read_csv(uploaded)
-    st.subheader("Data Preview")
-    st.dataframe(df.head())
+        # Display Metrics
+        st.subheader("Model Performance")
+        for k, v in metrics.items():
+            st.write(f"**{k}**: {v:.3f}")
 
-    # >>> Fix your feature & target columns here <<<
-    FEATURES = [
-        'CTR (%)',
-        'Keywords_Ranking',
-        'Organic_Traffic_Growth_Rate (%)',
-        'Average_Position',
-        'Domain_Authority'
-    ]
-    TARGET = 'Conversion_Rate (%)'
+        # CTR Forecast Table
+        st.subheader("Forecasted CTR (2025–2029)")
+        forecast_df = pd.DataFrame({
+            "Year": [2025, 2026, 2027, 2028, 2029],
+            "Mean CTR (µ)": results['mean_forecast'],
+            "Std Dev (σ)": results['std_forecast']
+        })
+        st.dataframe(forecast_df)
 
-    # Preprocess
-    checker = DataConsistencyChecker(df)
-    X, y = checker.preprocess(FEATURES, TARGET)
+        st.subheader("Optimisation Summary")
+        st.write(f"**Actual CTR (2024):** {results['actual_ctr']:.3f}")
+        st.write(f"**Optimised CTR (max cluster):** {results['optimal_ctr']:.3f}")
+        st.write(f"**Deviation:** {results['deviation']:.3f}")
+        st.write(f"**Final SEO Score:** {results['seo_score']:.3f}")
 
-    # Train & tune
-    prog = BayesianProgram(X, y)
-    with st.spinner("🔄 Tuning & training Bayesian model..."):
-        prog.tune_hyperparameters()
-
-    # Forecast score
-    with st.spinner("🔮 Sampling posterior and computing SEO score..."):
-        seo_score = prog.forecast_score(n_samples=2000)
-
-    st.success("✅ Computation complete!")
-    st.metric("Your Predicted SEO Score (0–10)", f"{seo_score:.2f}")
+        st.subheader("CTR Clustering Centroids")
+        st.write(results['centroids'])
 
 if __name__ == "__main__":
     main()
