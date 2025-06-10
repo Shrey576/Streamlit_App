@@ -1,4 +1,4 @@
-Here's a **README** for your project:  
+
 
 # CTR Forecasting & SEO Scoring Tool  
 
