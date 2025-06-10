@@ -1,5 +1,4 @@
 
-
 # CTR Forecasting & SEO Scoring Tool  
 
 ## Overview  
@@ -12,14 +11,21 @@ This project presents a **predictive SEO analytics tool** built using **Bayesian
 - **Linear Regression Baseline** – Provides an **SEO Score** based on weighted feature contributions.  
 - **Streamlit Interface** – Allows users to **upload datasets, run forecasts, and visualize results interactively**.  
 
-
+## Installation  
+### 1. Clone the Repository  
+```bash  
+git clone https://github.com/your-repo-name.git  
+cd your-repo-name  
 ```  
-### Run the Application  
+### 2. Install Dependencies  
+Ensure you have Python **3.8+** installed, then run:  
+```bash  
+pip install -r requirements.txt  
+```  
+### 3. Run the Application  
 Launch the Streamlit app with:  
 ```bash  
-streamlit run streamlit_app.py
-or
-run the URL in a working browser such as Chrome.  
+streamlit run streamlit_app.py  
 ```  
 
 ## Usage  
@@ -39,13 +45,13 @@ run the URL in a working browser such as Chrome.
 - Introduce **real-time SEO data integration** via web scraping or APIs.  
 - Enhance **ticket-based architecture** for scalable asynchronous predictions.  
 
-## Contributors  
-- **Shreya Sharma** – **University of Reading, Computer Science**  
+## Contributor 
+- **Shreya Sharma** – **University of Reading, Computer Science**
 
 ## Supervisor – Dr. Todd Jones  
 
 ## License  
 This project is released under the **MIT License**.  
 
-
+ 
 
