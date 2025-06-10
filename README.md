@@ -27,6 +27,8 @@ Launch the Streamlit app with:
 ```bash  
 streamlit run streamlit_app.py  
 ```  
+### 4. Upload Dataset
+Upload Demo .csv dataset provided. 
 
 ## Usage  
 1. **Upload a `.csv` dataset** containing SEO metrics.  
