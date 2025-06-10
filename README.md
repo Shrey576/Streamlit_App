@@ -41,7 +41,8 @@ run the URL in a working browser such as Chrome.
 
 ## Contributors  
 - **Shreya Sharma** – **University of Reading, Computer Science**  
-- **Supervisor** – Dr. Todd Jones  
+
+## Supervisor – Dr. Todd Jones  
 
 ## License  
 This project is released under the **MIT License**.  
