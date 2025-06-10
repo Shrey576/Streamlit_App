@@ -12,21 +12,14 @@ This project presents a **predictive SEO analytics tool** built using **Bayesian
 - **Linear Regression Baseline** – Provides an **SEO Score** based on weighted feature contributions.  
 - **Streamlit Interface** – Allows users to **upload datasets, run forecasts, and visualize results interactively**.  
 
-## Installation  
-### 1. Clone the Repository  
-```bash  
-git clone https://github.com/your-repo-name.git  
-cd your-repo-name  
+
 ```  
-### 2. Install Dependencies  
-Ensure you have Python **3.8+** installed, then run:  
-```bash  
-pip install -r requirements.txt  
-```  
-### 3. Run the Application  
+### Run the Application  
 Launch the Streamlit app with:  
 ```bash  
-streamlit run streamlit_app.py  
+streamlit run streamlit_app.py
+or
+run the URL in a working browser such as Chrome.  
 ```  
 
 ## Usage  
